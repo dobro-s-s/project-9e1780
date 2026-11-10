@@ -28,3 +28,8 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+## Project rules
+
+- Each app screen is its own route file (`/` start, `/tasks` exercises) — keeps screens linkable and lets each set its own head metadata.
+- Chunky kid-friendly buttons are `play`/`soft` variants in `src/components/ui/button.tsx`, styled via shadow tokens in `src/styles.css` — keeps styling in the design system.
