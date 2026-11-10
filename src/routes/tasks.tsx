@@ -1,11 +1,27 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, ArrowRight, Check, Lightbulb, RotateCcw, Sparkles } from "lucide-react";
-import { useEffect, useReducer, useRef, type ReactNode } from "react";
+import { ArrowLeft, ArrowRight, Check, Lightbulb, ListChecks, RotateCcw, Sparkles } from "lucide-react";
+import { useEffect, useReducer, useRef, useState, type ReactNode } from "react";
 
 import owl from "@/assets/owl-mascot.png";
 import { PlayfulShapes } from "@/components/PlayfulShapes";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { TASKS, initialQuizState, quizReducer, resultComment, type QuizAction, type QuizState } from "@/lib/quiz";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  TASKS,
+  initialQuizState,
+  quizReducer,
+  resultComment,
+  resultSummary,
+  type QuizAction,
+  type QuizState,
+} from "@/lib/quiz";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/tasks")({
@@ -216,6 +232,7 @@ function Feedback({
 function ResultCard({ state, onRestart }: { state: QuizState; onRestart: () => void }) {
   const total = TASKS.length;
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const [reviewOpen, setReviewOpen] = useState(false);
   useEffect(() => {
     buttonRef.current?.focus({ preventScroll: true });
     window.scrollTo({ top: 0 });
@@ -254,20 +271,95 @@ function ResultCard({ state, onRestart }: { state: QuizState; onRestart: () => v
         />
       </div>
 
-      <p className="mt-6 text-xl font-bold leading-snug text-foreground sm:text-2xl">
+      <p className="mt-6 text-lg font-bold leading-snug text-foreground sm:text-xl">
+        {resultSummary(state.firstTry, state.afterHint)}
+      </p>
+
+      <p className="mt-4 text-xl font-bold leading-snug text-foreground sm:text-2xl">
         {resultComment(state.firstTry, total)}
       </p>
 
-      <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row">
+      <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
         <Button ref={buttonRef} variant="play" size="md" onClick={onRestart}>
           <RotateCcw strokeWidth={3} />
           Пройти ещё раз
+        </Button>
+        <Button variant="soft" size="md" onClick={() => setReviewOpen(true)}>
+          <ListChecks strokeWidth={3} />
+          Разобрать ответы
         </Button>
         <Link to="/" className={cn(buttonVariants({ variant: "soft", size: "md" }))}>
           На главную
         </Link>
       </div>
+
+      <AnswerReview open={reviewOpen} onOpenChange={setReviewOpen} />
     </section>
+  );
+}
+
+/** All five tasks with the correct answer and a short reason, opened from the result screen. */
+function AnswerReview({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[88dvh] w-[calc(100%-2rem)] max-w-2xl gap-0 overflow-y-auto rounded-4xl border-0 bg-card p-5 shadow-card sm:rounded-4xl sm:p-8">
+        <DialogHeader className="pr-10">
+          <DialogTitle className="font-display text-2xl font-extrabold text-foreground sm:text-3xl">
+            Разбираем ответы
+          </DialogTitle>
+          <DialogDescription className="text-base font-semibold text-muted-foreground sm:text-lg">
+            Все пять заданий с правильными ответами и короткими объяснениями.
+          </DialogDescription>
+        </DialogHeader>
+
+        <ol className="mt-6 space-y-4">
+          {TASKS.map((task) => (
+            <li key={task.id} className="rounded-3xl bg-muted/60 p-4 sm:p-5">
+              <div className="flex items-center gap-3">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary font-display text-lg font-bold text-primary-foreground">
+                  {task.id}
+                </span>
+                <p className="font-display text-base font-bold text-foreground sm:text-lg">{task.kind}</p>
+              </div>
+
+              {task.items && (
+                <ul className="mt-3 flex flex-wrap gap-1.5" aria-label="Задание">
+                  {task.items.map((item, i) => (
+                    <li
+                      key={`${item}-${i}`}
+                      className={cn(
+                        "flex h-9 min-w-9 items-center justify-center rounded-xl px-2 font-display text-base font-bold sm:text-lg",
+                        item === "?" ? "bg-primary text-primary-foreground" : "bg-card text-foreground",
+                      )}
+                    >
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {task.story && (
+                <p className="mt-3 text-base font-bold leading-snug text-foreground sm:text-lg">{task.story}</p>
+              )}
+
+              <p className="mt-3 flex flex-wrap items-center gap-2 text-base font-bold text-foreground sm:text-lg">
+                Правильный ответ:
+                <span className="rounded-xl bg-secondary px-3 py-1 font-display text-secondary-foreground">
+                  {task.answer}
+                </span>
+              </p>
+              <p className="mt-2 text-base font-semibold leading-snug text-muted-foreground sm:text-lg">
+                {task.explain}
+              </p>
+            </li>
+          ))}
+        </ol>
+
+        <DialogClose className={cn(buttonVariants({ variant: "play", size: "md" }), "mt-6 w-full sm:w-auto")}>
+          Понятно!
+        </DialogClose>
+      </DialogContent>
+    </Dialog>
   );
 }
 

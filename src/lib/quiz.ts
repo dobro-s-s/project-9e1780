@@ -10,6 +10,8 @@ export type QuizTask = {
   answer: string;
   hint: string;
   praise: string;
+  /** Short reason shown in the answer review on the result screen. */
+  explain: string;
 };
 
 export const TASKS: QuizTask[] = [
@@ -22,6 +24,7 @@ export const TASKS: QuizTask[] = [
     answer: "15",
     hint: "Посмотри, на сколько каждое число больше предыдущего: от 3 до 6, от 6 до 9, от 9 до 12. Прибавь столько же к числу 12.",
     praise: "Верно! Каждый раз прибавляется 3, и 12\u00a0+\u00a03\u00a0=\u00a015.",
+    explain: "Каждое число больше предыдущего на 3: 3, 6, 9, 12. Значит, дальше 12 + 3 = 15.",
   },
   {
     id: 2,
@@ -30,8 +33,9 @@ export const TASKS: QuizTask[] = [
     items: ["4", "8", "12", "15", "16"],
     options: ["8", "12", "15"],
     answer: "15",
-    hint: "Проверь, какие числа делятся на 4 без остатка. Все числа делятся, кроме одного — оно и лишнее.",
+    hint: "Посмотри на числа 4, 8, 12 и 16. Что у них общего? Какое число не подходит к этой группе?",
     praise: "Точно! 4, 8, 12 и 16 делятся на 4, а 15 — нет.",
+    explain: "4, 8, 12 и 16 делятся на 4 без остатка, а 15 — нет. Поэтому 15 лишнее.",
   },
   {
     id: 3,
@@ -42,6 +46,7 @@ export const TASKS: QuizTask[] = [
     answer: "Д",
     hint: "Вспомни алфавит: А, Б, В, Г… Какая буква стоит сразу после Г?",
     praise: "Правильно! В алфавите после Г идёт Д.",
+    explain: "Это буквы алфавита по порядку: А, Б, В, Г. Сразу после Г идёт Д.",
   },
   {
     id: 4,
@@ -52,6 +57,7 @@ export const TASKS: QuizTask[] = [
     answer: "морковь",
     hint: "Подумай, где что растёт. Три из них — фрукты и растут на деревьях, а одно — овощ и растёт в земле на грядке.",
     praise: "Молодец! Яблоко, груша и слива — фрукты, а морковь — овощ.",
+    explain: "Яблоко, груша и слива — фрукты, они растут на деревьях. Морковь — овощ, она растёт в земле.",
   },
   {
     id: 5,
@@ -62,6 +68,7 @@ export const TASKS: QuizTask[] = [
     answer: "4",
     hint: "У всех братьев одна и та же сестра — это сама Маша. Посчитай братьев и не забудь про Машу.",
     praise: "Здорово! Три брата и Маша — всего 4 ребёнка.",
+    explain: "У всех трёх братьев одна и та же сестра — Маша. Значит, в семье 3 брата и Маша: всего 4 ребёнка.",
   },
 ];
 
@@ -131,6 +138,23 @@ export function quizReducer(state: QuizState, action: QuizAction, tasks: QuizTas
     case "restart":
       return initialQuizState;
   }
+}
+
+/** Picks the Russian form of a noun for a number: 1 задание, 2 задания, 5 заданий. */
+export function pluralRu(n: number, one: string, few: string, many: string): string {
+  const mod10 = Math.abs(n) % 10;
+  const mod100 = Math.abs(n) % 100;
+  if (mod10 === 1 && mod100 !== 11) return one;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
+  return many;
+}
+
+/** Plain-language recap of the run, e.g. «Ты решил 3 задания … и справился ещё с 2 заданиями …». */
+export function resultSummary(firstTry: number, afterHint: number): string {
+  const first = pluralRu(firstTry, "задание", "задания", "заданий");
+  // «справился ещё с N …» needs the instrumental case: с 1 заданием, с 2 заданиями, с 0 заданиями.
+  const hinted = afterHint % 10 === 1 && afterHint % 100 !== 11 ? "заданием" : "заданиями";
+  return `Ты решил ${firstTry} ${first} с первой попытки и справился ещё с ${afterHint} ${hinted} с помощью подсказок.`;
 }
 
 export function resultComment(firstTry: number, total: number): string {
