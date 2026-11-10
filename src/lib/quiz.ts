@@ -74,12 +74,19 @@ export const TASKS: QuizTask[] = [
 
 export type QuizStatus = "answering" | "correct" | "wrong";
 
-export type QuizState = {
-  index: number;
+/** Everything the child did on one task; kept when they step back and forth. */
+export type TaskRecord = {
   status: QuizStatus;
   selected: string | null;
-  /** Whether the current task already had a wrong attempt. */
+  /** Whether this task already had a wrong attempt (so the hint was shown). */
   hadMistake: boolean;
+  /** Every answer pressed on this task, in order. */
+  attempts: string[];
+};
+
+export type QuizState = {
+  index: number;
+  records: TaskRecord[];
   firstTry: number;
   afterHint: number;
   finished: boolean;
@@ -89,55 +96,90 @@ export type QuizAction =
   | { type: "answer"; option: string }
   | { type: "retry" }
   | { type: "next" }
+  | { type: "back" }
   | { type: "restart" };
 
-export const initialQuizState: QuizState = {
-  index: 0,
-  status: "answering",
-  selected: null,
-  hadMistake: false,
-  firstTry: 0,
-  afterHint: 0,
-  finished: false,
-};
+export const emptyRecord: TaskRecord = { status: "answering", selected: null, hadMistake: false, attempts: [] };
+
+export function createInitialState(tasks: QuizTask[] = TASKS): QuizState {
+  return {
+    index: 0,
+    records: tasks.map(() => emptyRecord),
+    firstTry: 0,
+    afterHint: 0,
+    finished: false,
+  };
+}
+
+export const initialQuizState: QuizState = createInitialState();
+
+export function currentRecord(state: QuizState): TaskRecord {
+  return state.records[state.index] ?? emptyRecord;
+}
+
+function withRecord(state: QuizState, record: TaskRecord): QuizState {
+  const records = state.records.slice();
+  records[state.index] = record;
+  return { ...state, records };
+}
 
 export function quizReducer(state: QuizState, action: QuizAction, tasks: QuizTask[] = TASKS): QuizState {
+  const record = currentRecord(state);
   switch (action.type) {
     case "answer": {
-      if (state.finished || state.status !== "answering") return state;
+      // A solved task cannot be answered again, so it is never counted twice.
+      if (state.finished || record.status !== "answering") return state;
       const task = tasks[state.index];
       if (!task) return state;
+      const attempts = [...record.attempts, action.option];
       if (action.option === task.answer) {
         return {
-          ...state,
-          status: "correct",
-          selected: action.option,
-          firstTry: state.hadMistake ? state.firstTry : state.firstTry + 1,
-          afterHint: state.hadMistake ? state.afterHint + 1 : state.afterHint,
+          ...withRecord(state, { ...record, status: "correct", selected: action.option, attempts }),
+          firstTry: record.hadMistake ? state.firstTry : state.firstTry + 1,
+          afterHint: record.hadMistake ? state.afterHint + 1 : state.afterHint,
         };
       }
-      return { ...state, status: "wrong", selected: action.option, hadMistake: true };
+      return withRecord(state, { ...record, status: "wrong", selected: action.option, hadMistake: true, attempts });
     }
     case "retry": {
-      if (state.status !== "wrong") return state;
-      return { ...state, status: "answering", selected: null };
+      if (record.status !== "wrong") return state;
+      return withRecord(state, { ...record, status: "answering", selected: null });
     }
     case "next": {
       // Moving on is only allowed after a correct answer.
-      if (state.status !== "correct") return state;
+      if (state.finished || record.status !== "correct") return state;
       const isLast = state.index >= tasks.length - 1;
-      return {
-        ...state,
-        index: isLast ? state.index : state.index + 1,
-        status: "answering",
-        selected: null,
-        hadMistake: false,
-        finished: isLast,
-      };
+      return isLast ? { ...state, finished: true } : { ...state, index: state.index + 1 };
+    }
+    case "back": {
+      // Step back to the previous task; every task keeps its answers and hint state.
+      if (state.finished || state.index === 0) return state;
+      return { ...state, index: state.index - 1 };
     }
     case "restart":
-      return initialQuizState;
+      return createInitialState(tasks);
   }
+}
+
+export type ReviewCategory = "all" | "firstTry" | "afterHint";
+
+/** Tasks shown in a review list: all of them, or the solved ones split by whether a hint was needed. */
+export function tasksInCategory(
+  records: TaskRecord[],
+  category: ReviewCategory,
+  tasks: QuizTask[] = TASKS,
+): QuizTask[] {
+  return tasks.filter((_, i) => {
+    if (category === "all") return true;
+    const r = records[i];
+    if (!r || r.status !== "correct") return false;
+    return category === "afterHint" ? r.hadMistake : !r.hadMistake;
+  });
+}
+
+/** Wrong answers tried on a task, each listed once, in the order they were first chosen. */
+export function wrongAnswers(record: TaskRecord, task: QuizTask): string[] {
+  return [...new Set(record.attempts.filter((a) => a !== task.answer))];
 }
 
 /** Picks the Russian form of a noun for a number: 1 задание, 2 задания, 5 заданий. */

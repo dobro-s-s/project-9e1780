@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import {
   TASKS,
+  currentRecord,
   initialQuizState,
   quizReducer,
   resultSummary,
+  tasksInCategory,
+  wrongAnswers,
   type QuizAction,
   type QuizState,
 } from "./quiz";
@@ -45,7 +48,7 @@ describe("quiz rules", () => {
   it("does not allow moving on after a wrong answer", () => {
     const s = run([{ type: "answer", option: "14" }, { type: "next" }]);
     expect(s.index).toBe(0);
-    expect(s.status).toBe("wrong");
+    expect(currentRecord(s).status).toBe("wrong");
   });
 
   it("does not allow moving on before answering", () => {
@@ -137,5 +140,126 @@ describe("result summary", () => {
     expect(resultSummary(s.firstTry, s.afterHint)).toBe(
       "Ты решил 3 задания с первой попытки и справился ещё с 2 заданиями с помощью подсказок.",
     );
+  });
+});
+
+const FULL_RUN: QuizAction[] = [
+  { type: "answer", option: "15" },
+  { type: "next" },
+  { type: "answer", option: "8" },
+  { type: "retry" },
+  { type: "answer", option: "12" },
+  { type: "retry" },
+  { type: "answer", option: "15" },
+  { type: "next" },
+  { type: "answer", option: "Д" },
+  { type: "next" },
+  { type: "answer", option: "слива" },
+  { type: "retry" },
+  { type: "answer", option: "морковь" },
+  { type: "next" },
+  { type: "answer", option: "4" },
+  { type: "next" },
+];
+
+describe("going back between tasks", () => {
+  it("returns to the previous task", () => {
+    const s = run([{ type: "answer", option: "15" }, { type: "next" }, { type: "back" }]);
+    expect(s.index).toBe(0);
+  });
+
+  it("does nothing on the first task (the screen sends the child home instead)", () => {
+    expect(run([{ type: "back" }]).index).toBe(0);
+  });
+
+  it("keeps a solved task solved with its answer after going back", () => {
+    const s = run([{ type: "answer", option: "15" }, { type: "next" }, { type: "back" }]);
+    expect(currentRecord(s).status).toBe("correct");
+    expect(currentRecord(s).selected).toBe("15");
+  });
+
+  it("keeps the hint open on a task the child left after a wrong answer", () => {
+    const s = run([
+      { type: "answer", option: "15" },
+      { type: "next" },
+      { type: "answer", option: "8" },
+      { type: "back" },
+      { type: "next" },
+    ]);
+    expect(s.index).toBe(1);
+    expect(currentRecord(s).status).toBe("wrong");
+    expect(currentRecord(s).selected).toBe("8");
+  });
+
+  it("does not count a task twice when going back and forward", () => {
+    const s = run([
+      { type: "answer", option: "15" },
+      { type: "next" },
+      { type: "back" },
+      { type: "answer", option: "15" },
+      { type: "next" },
+      { type: "back" },
+      { type: "next" },
+    ]);
+    expect(s.index).toBe(1);
+    expect(s.firstTry).toBe(1);
+    expect(s.afterHint).toBe(0);
+  });
+
+  it("still counts after a hint when the child comes back and solves the task", () => {
+    const s = run([
+      { type: "answer", option: "15" },
+      { type: "next" },
+      { type: "answer", option: "12" },
+      { type: "back" },
+      { type: "next" },
+      { type: "retry" },
+      { type: "answer", option: "15" },
+    ]);
+    expect(s.firstTry).toBe(1);
+    expect(s.afterHint).toBe(1);
+  });
+
+  it("does not skip an unsolved task by going back and forward", () => {
+    const s = run([{ type: "answer", option: "15" }, { type: "next" }, { type: "back" }, { type: "next" }, { type: "next" }]);
+    expect(s.index).toBe(1);
+  });
+});
+
+describe("result review lists", () => {
+  const s = run(FULL_RUN);
+
+  it("lists first-try tasks", () => {
+    expect(tasksInCategory(s.records, "firstTry").map((t) => t.id)).toEqual([1, 3, 5]);
+  });
+
+  it("lists after-hint tasks", () => {
+    expect(tasksInCategory(s.records, "afterHint").map((t) => t.id)).toEqual([2, 4]);
+  });
+
+  it("lists all five tasks in the full review", () => {
+    expect(tasksInCategory(s.records, "all").map((t) => t.id)).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  it("agrees with the counters", () => {
+    expect(tasksInCategory(s.records, "firstTry")).toHaveLength(s.firstTry);
+    expect(tasksInCategory(s.records, "afterHint")).toHaveLength(s.afterHint);
+  });
+
+  it("gives an empty after-hint list when everything was solved first try", () => {
+    const perfect = run([
+      { type: "answer", option: "15" }, { type: "next" },
+      { type: "answer", option: "15" }, { type: "next" },
+      { type: "answer", option: "Д" }, { type: "next" },
+      { type: "answer", option: "морковь" }, { type: "next" },
+      { type: "answer", option: "4" }, { type: "next" },
+    ]);
+    expect(tasksInCategory(perfect.records, "afterHint")).toEqual([]);
+  });
+
+  it("remembers the child's wrong answers and the final one", () => {
+    const record = s.records[1]!;
+    expect(wrongAnswers(record, TASKS[1]!)).toEqual(["8", "12"]);
+    expect(record.selected).toBe("15");
   });
 });
