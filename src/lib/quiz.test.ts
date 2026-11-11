@@ -5,6 +5,7 @@ import {
   currentRecord,
   initialQuizState,
   quizReducer,
+  resultCounts,
   resultSummary,
   tasksInCategory,
   wrongAnswers,
@@ -57,8 +58,8 @@ describe("quiz rules", () => {
 
   it("counts a correct answer with no mistakes as first try", () => {
     const s = run([{ type: "answer", option: "15" }]);
-    expect(s.firstTry).toBe(1);
-    expect(s.afterHint).toBe(0);
+    expect(resultCounts(s.records).firstTry).toBe(1);
+    expect(resultCounts(s.records).afterHint).toBe(0);
   });
 
   it("counts a correct answer after a hint separately", () => {
@@ -69,8 +70,8 @@ describe("quiz rules", () => {
       { type: "retry" },
       { type: "answer", option: "15" },
     ]);
-    expect(s.firstTry).toBe(0);
-    expect(s.afterHint).toBe(1);
+    expect(resultCounts(s.records).firstTry).toBe(0);
+    expect(resultCounts(s.records).afterHint).toBe(1);
   });
 
   it("finishes after the fifth task with the right totals", () => {
@@ -90,9 +91,9 @@ describe("quiz rules", () => {
       { type: "answer", option: "4" },
       { type: "next" },
     ]);
-    expect(s.finished).toBe(true);
-    expect(s.firstTry).toBe(3);
-    expect(s.afterHint).toBe(2);
+    expect(s.phase).toBe("done");
+    expect(resultCounts(s.records).firstTry).toBe(3);
+    expect(resultCounts(s.records).afterHint).toBe(2);
   });
 
   it("restart resets progress and counters", () => {
@@ -137,7 +138,7 @@ describe("result summary", () => {
       { type: "answer", option: "4" },
       { type: "next" },
     ]);
-    expect(resultSummary(s.firstTry, s.afterHint)).toBe(
+    expect(resultSummary(resultCounts(s.records).firstTry, resultCounts(s.records).afterHint)).toBe(
       "Ты решил 3 задания с первой попытки и справился ещё с 2 заданиями с помощью подсказок.",
     );
   });
@@ -202,8 +203,8 @@ describe("going back between tasks", () => {
       { type: "next" },
     ]);
     expect(s.index).toBe(1);
-    expect(s.firstTry).toBe(1);
-    expect(s.afterHint).toBe(0);
+    expect(resultCounts(s.records).firstTry).toBe(1);
+    expect(resultCounts(s.records).afterHint).toBe(0);
   });
 
   it("still counts after a hint when the child comes back and solves the task", () => {
@@ -216,8 +217,8 @@ describe("going back between tasks", () => {
       { type: "retry" },
       { type: "answer", option: "15" },
     ]);
-    expect(s.firstTry).toBe(1);
-    expect(s.afterHint).toBe(1);
+    expect(resultCounts(s.records).firstTry).toBe(1);
+    expect(resultCounts(s.records).afterHint).toBe(1);
   });
 
   it("does not skip an unsolved task by going back and forward", () => {
@@ -259,8 +260,8 @@ describe("result review lists", () => {
   });
 
   it("agrees with the counters", () => {
-    expect(tasksInCategory(s.records, "firstTry")).toHaveLength(s.firstTry);
-    expect(tasksInCategory(s.records, "afterHint")).toHaveLength(s.afterHint);
+    expect(tasksInCategory(s.records, "firstTry")).toHaveLength(resultCounts(s.records).firstTry);
+    expect(tasksInCategory(s.records, "afterHint")).toHaveLength(resultCounts(s.records).afterHint);
   });
 
   it("gives an empty after-hint list when everything was solved first try", () => {

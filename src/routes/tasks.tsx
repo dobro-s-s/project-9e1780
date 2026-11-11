@@ -20,6 +20,7 @@ import {
   initialQuizState,
   quizReducer,
   resultComment,
+  resultCounts,
   resultSummary,
   tasksInCategory,
   wrongAnswers,
@@ -56,7 +57,7 @@ function TasksScreen() {
   return (
     <main className="relative flex min-h-dvh items-start justify-center px-4 py-6 sm:items-center sm:px-6 sm:py-10">
       <PlayfulShapes />
-      {state.finished ? (
+      {state.phase === "done" ? (
         <ResultCard state={state} onRestart={() => dispatch({ type: "restart" })} />
       ) : (
         <TaskCard key={state.index} state={state} dispatch={dispatch} />
@@ -267,7 +268,8 @@ function ResultCard({ state, onRestart }: { state: QuizState; onRestart: () => v
   const total = TASKS.length;
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [review, setReview] = useState<ReviewView>({ category: "all", open: false, taskId: null });
-  const unsolved = tasksInCategory(state.records, "unsolved").length;
+  const counts = resultCounts(state.records);
+  const unsolved = counts.unsolved + counts.wrong;
   const openReview = (category: ReviewCategory) => setReview({ category, open: true, taskId: null });
 
   useEffect(() => {
@@ -292,7 +294,7 @@ function ResultCard({ state, onRestart }: { state: QuizState; onRestart: () => v
       <div className="mt-6 grid w-full grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
         <Stat
           icon={<Sparkles className="size-6" strokeWidth={3} />}
-          value={state.firstTry}
+          value={counts.firstTry}
           total={total}
           label="с первой попытки"
           onClick={() => openReview("firstTry")}
@@ -301,7 +303,7 @@ function ResultCard({ state, onRestart }: { state: QuizState; onRestart: () => v
         />
         <Stat
           icon={<Lightbulb className="size-6" strokeWidth={3} />}
-          value={state.afterHint}
+          value={counts.afterHint}
           total={total}
           label="после подсказки"
           onClick={() => openReview("afterHint")}
@@ -320,11 +322,11 @@ function ResultCard({ state, onRestart }: { state: QuizState; onRestart: () => v
       </div>
 
       <p className="mt-6 text-lg font-bold leading-snug text-foreground sm:text-xl">
-        {resultSummary(state.firstTry, state.afterHint)}
+        {resultSummary(counts.firstTry, counts.afterHint)}
       </p>
 
       <p className="mt-4 text-xl font-bold leading-snug text-foreground sm:text-2xl">
-        {resultComment(state.firstTry, total)}
+        {resultComment(counts.firstTry, total, counts.firstTry + counts.afterHint)}
       </p>
 
       <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
@@ -366,6 +368,11 @@ const REVIEW_TEXT: Record<ReviewCategory, { title: string; description: string; 
     title: "После подсказки",
     description: "Задания, в которых правильный ответ получился после подсказки. Нажми на задание, чтобы посмотреть разбор.",
     empty: "Здесь пусто — подсказка тебе ни разу не понадобилась. Все задания решены с первой попытки!",
+  },
+  wrong: {
+    title: "Неправильно",
+    description: "Задания, где остался неверный ответ. Посмотри правильный ответ и объяснение.",
+    empty: "Здесь пусто — неправильных ответов не осталось!",
   },
   unsolved: {
     title: "Не решено",
