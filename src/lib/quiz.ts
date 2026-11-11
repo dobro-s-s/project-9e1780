@@ -161,9 +161,12 @@ export function quizReducer(state: QuizState, action: QuizAction, tasks: QuizTas
   }
 }
 
-export type ReviewCategory = "all" | "firstTry" | "afterHint";
+export type ReviewCategory = "all" | "firstTry" | "afterHint" | "unsolved";
 
-/** Tasks shown in a review list: all of them, or the solved ones split by whether a hint was needed. */
+/**
+ * Tasks shown in a review list. firstTry, afterHint and unsolved split all tasks into three
+ * groups with no overlap: solved without a mistake, solved after a hint, not solved yet.
+ */
 export function tasksInCategory(
   records: TaskRecord[],
   category: ReviewCategory,
@@ -172,7 +175,9 @@ export function tasksInCategory(
   return tasks.filter((_, i) => {
     if (category === "all") return true;
     const r = records[i];
-    if (!r || r.status !== "correct") return false;
+    const solved = r?.status === "correct";
+    if (category === "unsolved") return !solved;
+    if (!r || !solved) return false;
     return category === "afterHint" ? r.hadMistake : !r.hadMistake;
   });
 }

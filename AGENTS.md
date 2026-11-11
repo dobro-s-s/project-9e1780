@@ -32,5 +32,5 @@ use the editor.
 ## Project rules
 
 - Each app screen is its own route file (`/` start, `/tasks` exercises) — keeps screens linkable and lets each set its own head metadata.
-- Quiz content and rules (answers, no-skip, first-try vs after-hint counting) live as pure data + reducer in `src/lib/quiz.ts`, tested in `quiz.test.ts`; `/tasks` only renders state — keeps rules testable without the UI.
+- Quiz content and rules (answers, no-skip, back navigation, first-try vs after-hint counting, per-task answer records and review groups) live as pure data + reducer in `src/lib/quiz.ts`, tested in `quiz.test.ts`; `/tasks` only renders state — keeps rules testable without the UI. A solved task cannot be re-answered, so stepping back never recounts it.
 - Chunky kid-friendly buttons are `play`/`soft` variants in `src/components/ui/button.tsx`, styled via shadow tokens in `src/styles.css` — keeps styling in the design system.

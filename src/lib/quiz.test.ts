@@ -241,6 +241,23 @@ describe("result review lists", () => {
     expect(tasksInCategory(s.records, "all").map((t) => t.id)).toEqual([1, 2, 3, 4, 5]);
   });
 
+  it("has no unsolved tasks after a finished run", () => {
+    expect(tasksInCategory(s.records, "unsolved")).toEqual([]);
+  });
+
+  it("puts each of the five tasks into exactly one of the three groups", () => {
+    const ids = (["firstTry", "afterHint", "unsolved"] as const).flatMap((c) =>
+      tasksInCategory(s.records, c).map((t) => t.id),
+    );
+    expect(ids.sort()).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  it("lists tasks not solved yet as unsolved", () => {
+    const partial = run([{ type: "answer", option: "15" }, { type: "next" }, { type: "answer", option: "8" }]);
+    expect(tasksInCategory(partial.records, "unsolved").map((t) => t.id)).toEqual([2, 3, 4, 5]);
+    expect(tasksInCategory(partial.records, "afterHint")).toEqual([]);
+  });
+
   it("agrees with the counters", () => {
     expect(tasksInCategory(s.records, "firstTry")).toHaveLength(s.firstTry);
     expect(tasksInCategory(s.records, "afterHint")).toHaveLength(s.afterHint);
