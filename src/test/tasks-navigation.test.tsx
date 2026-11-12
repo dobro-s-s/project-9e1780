@@ -15,8 +15,10 @@ const ANSWERS = ["15", "15", "Д", "морковь", "4"];
 
 // Renders only the tasks screen inside a tiny router, so the real buttons and state are exercised.
 async function renderTasks() {
+  const TasksScreen = TasksRoute.options.component;
+  if (!TasksScreen) throw new Error("tasks screen is missing");
   const root = createRootRoute({ component: Outlet });
-  const tasks = createRoute({ getParentRoute: () => root, path: "/tasks", component: TasksRoute.options.component });
+  const tasks = createRoute({ getParentRoute: () => root, path: "/tasks", component: TasksScreen });
   const home = createRoute({ getParentRoute: () => root, path: "/", component: () => <p>start</p> });
   const router = createRouter({
     routeTree: root.addChildren([home, tasks]),
