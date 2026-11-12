@@ -9,10 +9,29 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
-export default defineConfig({
-  tanstackStart: {
-    // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
-    // nitro/vite builds from this
-    server: { entry: "server" },
-  },
-});
+// GitHub Pages mode: only when GITHUB_PAGES_BASE is set (e.g. "/project-9e1780/").
+// Without it the config is exactly the Lovable one (SSR on Cloudflare), so preview and
+// Lovable publishing are unaffected.
+const pagesBase = process.env.GITHUB_PAGES_BASE;
+
+export default pagesBase
+  ? defineConfig({
+      // Static files only: no server bundle to deploy.
+      nitro: false,
+      // Vite prefixes every asset URL with this; TanStack Start derives router.basepath from it.
+      vite: { base: pagesBase },
+      tanstackStart: {
+        server: { entry: "server" },
+        pages: [{ path: "/" }, { path: "/tasks" }],
+        prerender: { enabled: true, autoStaticPathsDiscovery: false, crawlLinks: false },
+        // App shell for unknown URLs: GitHub Pages serves 404.html, the router then renders the route.
+        spa: { enabled: true, prerender: { outputPath: "/404.html" } },
+      },
+    })
+  : defineConfig({
+      tanstackStart: {
+        // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
+        // nitro/vite builds from this
+        server: { entry: "server" },
+      },
+    });
