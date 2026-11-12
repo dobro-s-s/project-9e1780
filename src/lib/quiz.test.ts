@@ -227,6 +227,22 @@ describe("going back between tasks", () => {
   });
 });
 
+describe("last task", () => {
+  const toFifth: QuizAction[] = FULL_RUN.slice(0, -2);
+
+  it("«Дальше» after the correct fifth answer finishes the quiz", () => {
+    expect(run([...toFifth, { type: "answer", option: "4" }, { type: "next" }]).phase).toBe("done");
+  });
+
+  it("«Назад» on the solved fifth task returns to the fourth, keeping both answers", () => {
+    const s = run([...toFifth, { type: "answer", option: "4" }, { type: "back" }]);
+    expect(s.phase).toBe("main");
+    expect(s.index).toBe(3);
+    expect(currentRecord(s).selected).toBe("морковь");
+    expect(s.records[4]?.status).toBe("correct");
+  });
+});
+
 describe("result review lists", () => {
   const s = run(FULL_RUN);
 
@@ -255,7 +271,8 @@ describe("result review lists", () => {
 
   it("lists tasks not solved yet as unsolved", () => {
     const partial = run([{ type: "answer", option: "15" }, { type: "next" }, { type: "answer", option: "8" }]);
-    expect(tasksInCategory(partial.records, "unsolved").map((t) => t.id)).toEqual([2, 3, 4, 5]);
+    expect(tasksInCategory(partial.records, "unsolved").map((t) => t.id)).toEqual([3, 4, 5]);
+    expect(tasksInCategory(partial.records, "wrong").map((t) => t.id)).toEqual([2]);
     expect(tasksInCategory(partial.records, "afterHint")).toEqual([]);
   });
 
