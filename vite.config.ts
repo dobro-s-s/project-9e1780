@@ -12,7 +12,7 @@ import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 // GitHub Pages mode: only when GITHUB_PAGES_BASE is set (e.g. "/project-9e1780/").
 // Without it the config is exactly the Lovable one (SSR on Cloudflare), so preview and
 // Lovable publishing are unaffected.
-const pagesBase = process.env.GITHUB_PAGES_BASE;
+const pagesBase = process.env["GITHUB_PAGES_BASE"];
 
 export default pagesBase
   ? defineConfig({
@@ -24,8 +24,8 @@ export default pagesBase
         server: { entry: "server" },
         pages: [{ path: "/" }, { path: "/tasks" }],
         prerender: { enabled: true, autoStaticPathsDiscovery: false, crawlLinks: false },
-        // App shell for unknown URLs: GitHub Pages serves 404.html, the router then renders the route.
-        spa: { enabled: true, prerender: { outputPath: "/404.html" } },
+        // 404.html for unknown URLs is a copy of index.html made by the Pages workflow:
+        // TanStack's SPA shell also renders "/", which the prerender pass then skips as a duplicate.
       },
     })
   : defineConfig({

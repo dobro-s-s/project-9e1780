@@ -12,6 +12,9 @@ export const getRouter = () => {
     scrollRestoration: true,
     // Lets Query own freshness; set caching defaults on the QueryClient, not the router.
     defaultPreloadStaleTime: 0,
+    // GitHub Pages build (BASE_URL is a sub-folder) serves each page as <route>/index.html at
+    // "<route>/", so URLs keep the trailing slash there. Lovable (BASE_URL "/") keeps the default.
+    trailingSlash: import.meta.env.BASE_URL === "/" ? "never" : "always",
   });
 
   return router;
